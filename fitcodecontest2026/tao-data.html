@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Công cụ tạo data.json</title>
+<style>
+  :root { --bg:#f4f6fa; --card:#fff; --text:#1b2333; --muted:#5d6b82; --border:#d6dce8; --accent:#1f5fd6; --accent-text:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#11151c; --card:#1a2029; --text:#e8ecf3; --muted:#9aa7bd; --border:#2f3a4b; --accent:#5b92ff; --accent-text:#0b1220; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:20px; background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .card { max-width:720px; margin:0 auto; background:var(--card); border:1px solid var(--border);
+    border-radius:14px; padding:24px; }
+  h1 { margin:0 0 8px; font-size:1.3rem; }
+  p, li { color:var(--muted); font-size:.95rem; line-height:1.5; }
+  textarea { width:100%; height:180px; padding:10px; border-radius:10px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font:13px/1.4 ui-monospace,Consolas,monospace; }
+  button { margin:10px 8px 0 0; padding:10px 16px; font-weight:600; border:0; border-radius:8px;
+    cursor:pointer; background:var(--accent); color:var(--accent-text); }
+  #status { margin-top:12px; font-size:.95rem; }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>Tạo data.json từ danh sách Excel</h1>
+  <ol>
+    <li>Trong Excel, chọn 2 cột: <b>USER</b> và <b>FN</b> (họ tên, trùng tên file PDF). <b>Không chọn cột mật khẩu.</b></li>
+    <li>Nhấn Ctrl+C, dán vào ô bên dưới (mỗi dòng: USER, Tab, họ tên). Có thể dán cả dòng tiêu đề.</li>
+    <li>Bấm <b>Tạo data.json</b>, rồi tải về và thay file <code>data.json</code> trong repo.</li>
+  </ol>
+  <p>Cột thứ hai có thể là họ tên (tự thêm <code>.pdf</code>) hoặc tên file đầy đủ. Mọi xử lý diễn ra trong trình duyệt, không gửi dữ liệu đi đâu.</p>
+  <textarea id="in" placeholder="265055909&#9;Phạm Bảo Tín"></textarea>
+  <div>
+    <button id="make" type="button">Tạo data.json</button>
+    <button id="dl" type="button" disabled>Tải data.json</button>
+  </div>
+  <div id="status"></div>
+</main>
+<script>
+const SALT = "dethi-2026"; // phải trùng với salt trong data.json hiện có
+const $ = id => document.getElementById(id);
+let out = "";
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+$("make").onclick = async () => {
+  const items = {}, warn = [];
+  let n = 0;
+  for (const raw of $("in").value.split(/\r?\n/)) {
+    const cols = raw.split(/\t|;/).map(s => s.trim());
+    if (cols.length < 2 || !cols[0] || !cols[1]) continue;
+    const user = cols[0].replace(/\s+/g, "");
+    if (!/^\d+$/.test(user)) continue;               // bỏ dòng tiêu đề / dòng lạ
+    let name = cols[1].replace(/\s+/g, " ").normalize("NFC");
+    if (!/\.pdf$/i.test(name)) name += ".pdf";
+    const key = await sha256(SALT + ":" + user);
+    if (items[key]) warn.push("USER trùng: " + user);
+    items[key] = "files/" + name;
+    n++;
+  }
+  out = JSON.stringify({ salt: SALT, items }, null, 1);
+  $("dl").disabled = n === 0;
+  $("status").textContent = n ? "Đã tạo " + n + " mục." + (warn.length ? " Cảnh báo: " + warn.join(", ") : "")
+                              : "Không có dòng hợp lệ. Hãy kiểm tra lại dữ liệu đã dán.";
+};
+
+$("dl").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([out], { type: "application/json" }));
+  a.download = "data.json";
+  a.click();
+};
+</script>
+</body>
+</html>
