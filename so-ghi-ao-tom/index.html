@@ -477,6 +477,7 @@ function pondStats(P){
  return{n:E.length,cnt:cnt,safe:E.length?Math.round(cnt[0]*100/E.length):null,days:nd,first:E.length?E[E.length-1].f.ngayGio:"",last:E.length?E[0].f.ngayGio:"",feed:feed,avgFeed:nd?feed/nd:null,wLast:w.length?w[w.length-1].v:null,adg:adg,avg:avg,top:top};
 }
 function f1(x){return vn(Math.round(x*10)/10)}
+function pvScroll(){var el=document.getElementById("pvhist");if(el)window.scrollTo(0,Math.max(0,el.getBoundingClientRect().top+window.scrollY-10))}
 function viewPond(){
  var P=S.pv;
  if(P.loading)return '<div class="empty">Đang tải thông tin ao…</div>';
@@ -496,7 +497,7 @@ function viewPond(){
  h+='<div class="card"><div class="sec">Chỉ số vi phạm nhiều nhất (30 ngày)</div>'+(st.top.length?'<div class="rank">'+st.top.map(function(t){var m=st.top[0].n;return '<div class="rk"><span>'+esc(t.k)+'</span><div class="bar"><i style="width:'+(t.w/m*100)+'%;background:var(--wn)"></i><i style="width:'+(t.d/m*100)+'%;background:var(--dg)"></i></div><b>'+t.n+'</b></div>'}).join("")+'</div>':'<div class="sub">Không có chỉ số nào vượt ngưỡng trong 30 ngày qua.</div>')+'</div>';
  h+='<div class="card"><div class="sec">Diễn biến chỉ số</div><div class="seg" style="box-shadow:none;border:1px solid var(--bd);margin-bottom:8px">'+[7,14,30,90].map(function(n){return '<button data-a="range" data-n="'+n+'" aria-pressed="'+((S.range||7)===n)+'">'+n+' ngày</button>'}).join("")+'</div><div class="hs" style="margin-bottom:8px">'+INDS.map(function(x){return '<button class="pill sm2" data-a="ind" data-k="'+x[0]+'" aria-pressed="'+((S.ind||"doSang")===x[0])+'">'+x[1]+'</button>'}).join("")+'</div>'+chartHtml({logs:E,ponds:[{id:p.id}]})+'</div>';
  var pages=Math.max(1,Math.ceil(E.length/PAGE)),pg=Math.min(Math.max(1,P.page||1),pages);P.page=pg;var a=(pg-1)*PAGE;
- h+='<div class="sec" style="margin:4px 0 -4px">Toàn bộ lịch sử ao</div>';
+ h+='<div class="sec" id="pvhist" style="margin:4px 0 -4px">Toàn bộ lịch sử ao</div>';
  if(!E.length)return h+'<div class="empty">Ao này chưa có bản ghi nào.</div>';
  h+='<div class="sub">Hiển thị '+(a+1)+' đến '+Math.min(a+PAGE,E.length)+' trong '+P.total+' bản ghi'+(P.total>E.length?" (chỉ tải "+E.length+" bản ghi mới nhất)":"")+'</div>';
  h+=E.slice(a,a+PAGE).map(function(e){var ev=evC(e),sm=probSummary(ev);return '<button class="prow card p'+ev.all+'" data-a="open" data-id="'+esc(e.id)+'"><div class="pr1"><b>'+esc(e.f.ngayGio.replace("T"," "))+'</b>'+badge(ev.all)+'</div><div class="sub">'+esc(e.u||"")+'</div>'+(sm?'<div class="psum s'+ev.all+'">'+esc(sm)+'</div>':'<div class="sub" style="margin-top:4px">Mọi chỉ số tốt</div>')+'</button>'}).join("");
@@ -791,7 +792,7 @@ document.addEventListener("input",function(ev){
  if(!d.k||d.k==="filter")return;
  S.form[d.k]=ev.target.type==="checkbox"?ev.target.checked:ev.target.value;S.reqId=null;draw();
 });
-document.addEventListener("change",function(ev){var d=ev.target.dataset||{};if(d.k==="filter"){S.filter=ev.target.value;S.page=1;draw()}if(d.e==="role"){S.edit.role=ev.target.value;draw()}if(d.pgsel!=null){S.page=+ev.target.value;draw();window.scrollTo(0,0)}if(d.ppsel!=null&&S.pv){S.pv.page=+ev.target.value;draw();window.scrollTo(0,0)}});
+document.addEventListener("change",function(ev){var d=ev.target.dataset||{};if(d.k==="filter"){S.filter=ev.target.value;S.page=1;draw()}if(d.e==="role"){S.edit.role=ev.target.value;draw()}if(d.pgsel!=null){S.page=+ev.target.value;draw();window.scrollTo(0,0)}if(d.ppsel!=null&&S.pv){S.pv.page=+ev.target.value;draw();pvScroll()}});
 document.addEventListener("keydown",function(ev){
  if(ev.key==="Enter"&&ev.target.dataset&&ev.target.dataset.l)doLogin();
  if(SCAN&&ev.key==="Escape"){closeScan();return}
@@ -827,7 +828,7 @@ document.addEventListener("click",function(ev){
  else if(a==="scan")openScan()
  else if(a==="qrdl")downloadQr()
  else if(a==="qrprint")printQr()
- else if(a==="ppg"){S.pv.page=+t.dataset.p;draw();window.scrollTo(0,0)}
+ else if(a==="ppg"){S.pv.page=+t.dataset.p;draw();pvScroll()}
  else if(a==="pvedit"){var pp=S.pv.pond;S.pedit={isNew:false,fromPv:pp.id,id:pp.id,name:pp.name,area:pp.area,density:pp.density,date:pp.date,strain:pp.strain,status:/nuoi/.test(noA(pp.status))?"Dang nuoi":"Ao lang",note:pp.note};S.pv=null;S.tab="ql";S.qtab="a";draw();if(!S.pdata)loadPonds();window.scrollTo(0,0)}
  else if(a==="psave")savePond()
  else if(a==="upond"){var i=S.edit.ponds.indexOf(t.dataset.id);if(i>-1)S.edit.ponds.splice(i,1);else S.edit.ponds.push(t.dataset.id);draw()}
