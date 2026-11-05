@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#1f1b18">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tủ sách – Đọc PDF như sách thật</title>
+<style>
+:root{--bg:#2b2622;--bar:#1f1b18;--ink:#e9dfd0;--muted:#a89b88;--accent:#c9a46a;--tint:none}
+body[data-theme="paper"]{--bg:#d9ccb4;--bar:#cdbfa5;--ink:#3b3025;--muted:#6f6150;--accent:#8a5a2b}
+body[data-theme="night"]{--bg:#121110;--bar:#0b0a09;--ink:#cfc6b8;--muted:#8a8174;--accent:#b8935a;--tint:invert(.9) hue-rotate(180deg) brightness(.85)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;height:100dvh;margin:0;overflow:hidden;overscroll-behavior:none}
+body{background:var(--bg);color:var(--ink);font-family:Georgia,"Noto Serif","Times New Roman",serif;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);transition:background .3s}
+header{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;padding:.6rem 1rem;background:var(--bar)}
+header h1{font-size:1.05rem;margin:0 .6rem 0 0;font-weight:600}
+input[type=url]{flex:1 1 220px;min-width:0;padding:.5rem .7rem;border-radius:6px;border:1px solid var(--muted);background:transparent;color:var(--ink);font:inherit;font-size:.9rem}
+button,.btn,select{padding:.5rem .85rem;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--ink);font:inherit;font-size:.9rem;cursor:pointer}
+select option{color:#222}
+button:hover,.btn:hover{background:var(--accent);color:#1f1b18}
+button.primary{background:var(--accent);color:#1f1b18}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#welcome{max-width:34rem;margin:0 auto;height:100%;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:1.5rem;line-height:1.7}
+#welcome h2{font-size:1.5rem;margin:.2rem 0 .6rem}
+#welcome p{color:var(--muted);margin:.4rem 0}
+#drop{margin-top:1rem;border:1.5px dashed var(--muted);border-radius:10px;padding:1.2rem;color:var(--muted)}
+#drop.over{border-color:var(--accent);background:rgba(201,164,106,.1)}
+#stage{position:absolute;inset:12px 48px;display:none;align-items:center;justify-content:center}
+#book{position:relative;perspective:2600px;-webkit-perspective:2600px;filter:var(--tint);flex:none}
+#spread::before{content:"";position:absolute;inset:0;box-shadow:0 10px 40px rgba(0,0,0,.35);pointer-events:none}
+#spread{position:absolute;inset:0;transition:transform .75s cubic-bezier(.45,.05,.25,1)}
+.leaf{position:absolute;top:0;height:100%;transform-origin:left center;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+  transition:transform .75s cubic-bezier(.45,.05,.25,1);will-change:transform}
+.leaf.drag{transition:none}
+.leaf.moving{box-shadow:0 0 28px rgba(0,0,0,.35)}
+.face{position:absolute;inset:0;overflow:hidden;background:#e3cf9f;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.face.back{transform:rotateY(180deg)}
+.face.blank{background:transparent}
+.face img{width:100%;height:100%;display:block;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
+.face::after{content:"";position:absolute;top:0;bottom:0;width:9%;pointer-events:none}
+.face.front::after{left:0;background:linear-gradient(90deg,rgba(60,40,10,.3),transparent)}
+.face.back::after{right:0;background:linear-gradient(270deg,rgba(60,40,10,.3),transparent)}
+#msg{position:absolute;left:50%;bottom:1rem;transform:translateX(-50%);background:var(--bar);color:var(--ink);padding:.5rem 1rem;border-radius:8px;font-size:.9rem;display:none;max-width:90%;text-align:center;z-index:20}
+.nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:80px;padding:0;font-size:1.6rem;border-color:transparent;opacity:.6;display:none;z-index:6}
+.nav:hover{opacity:1}
+#prev{left:4px}#next{right:4px}
+footer{display:none;gap:1rem;align-items:center;padding:.5rem 1rem;background:var(--bar);font-size:.9rem}
+footer input[type=range]{flex:1;accent-color:var(--accent)}
+label.s{display:flex;align-items:center;gap:.4rem;color:var(--muted);font-size:.85rem}
+label.s::before{content:""}
+#dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:50}
+@media(max-width:700px),(max-height:520px){
+  body{padding:0}
+  main{position:fixed;inset:0}
+  #stage{inset:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+  header,footer{position:fixed;left:0;right:0;z-index:30;transition:transform .25s}
+  header{top:0;padding:calc(.6rem + env(safe-area-inset-top,0px)) .8rem .7rem;gap:.5rem;box-shadow:0 2px 14px rgba(0,0,0,.35)}
+  header h1{display:none}
+  input[type=url]{flex:1 1 100%;font-size:16px;min-height:44px}
+  button,.btn,select{min-height:44px;font-size:16px;padding:.5rem .9rem}
+  #go,select{flex:1}
+  .btn{display:inline-flex;align-items:center;justify-content:center;flex:1}
+  footer{bottom:0;padding:.6rem .9rem calc(.6rem + env(safe-area-inset-bottom,0px));gap:.7rem;box-shadow:0 -2px 14px rgba(0,0,0,.35)}
+  footer input[type=range]{min-height:32px}
+  #bright{width:80px;flex:none}
+  label.s .t{display:none}
+  label.s::before{content:"\2600";font-size:1.1rem}
+  body.ui-hidden header{transform:translateY(-130%)}
+  body.ui-hidden footer{transform:translateY(130%)}
+  .nav{display:none!important}
+  #msg{bottom:5.5rem}
+  #welcome{padding-top:8rem}
+  #drop{display:none}
+}
+@media(prefers-reduced-motion:reduce){.leaf,#spread{transition-duration:.01s}}
+</style>
+</head>
+<body data-theme="paper">
+<header>
+  <h1>Tủ sách</h1>
+  <input id="url" type="url" placeholder="Dán link file PDF của sách" aria-label="Link PDF">
+  <button class="primary" id="go">Mở sách</button>
+  <label class="btn" for="file">Chọn file PDF</label>
+  <input id="file" type="file" accept="application/pdf,.pdf" hidden>
+  <select id="theme" aria-label="Màu giấy">
+    <option value="paper">Giấy cũ</option>
+    <option value="warm">Nền tối ấm</option>
+    <option value="night">Ban đêm</option>
+  </select>
+</header>
+<main id="main">
+  <div id="welcome">
+    <h2>Đọc PDF như một cuốn sách thật</h2>
+    <p>Dán link PDF hoặc chọn file từ máy. Trang sách có màu giấy cũ dịu mắt, lật trang như sách giấy.</p>
+    <div id="drop">Hoặc kéo thả file PDF vào đây</div>
+    <p style="font-size:.85rem">Link PDF cần cho phép truy cập từ trang khác (CORS). Nếu không mở được, hãy tải file về rồi chọn từ máy.</p>
+  </div>
+  <div id="stage"><div id="book"><div id="spread"></div></div></div>
+  <button class="nav" id="prev" aria-label="Trang trước">‹</button>
+  <button class="nav" id="next" aria-label="Trang sau">›</button>
+  <div id="msg" role="status"></div>
+</main>
+<footer id="foot">
+  <span id="pn">–</span>
+  <input id="seek" type="range" min="1" value="1" aria-label="Chuyển trang">
+  <label class="s"><span class="t">Độ sáng</span> <input id="bright" type="range" min="30" max="100" value="100"></label>
+</footer>
+<div id="dim"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+function msg(t,keep){const m=$("msg");m.textContent=t;m.style.display=t?"block":"none";if(t&&!keep)setTimeout(()=>{if(m.textContent===t)m.style.display="none"},3800)}
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+
+// ---------- Giao diện ----------
+$("theme").value=store("theme")||"paper";
+document.body.dataset.theme=$("theme").value;
+$("theme").onchange=e=>{document.body.dataset.theme=e.target.value;store("theme",e.target.value)};
+$("bright").oninput=e=>{$("dim").style.opacity=(100-e.target.value)/100*.8};
+
+// ---------- Trạng thái sách ----------
+const S={pdf:null,N:0,ratio:.7,mode:"single",k:0,kmax:0,W:0,H:0,leaves:[],faces:{},key:"",gen:0,rh:1200};
+const done=new Set(),urls={};
+let chain=Promise.resolve();
+const EASE_MS=780;
+const compact=()=>matchMedia("(max-width:700px),(max-height:520px)").matches;
+
+async function openBook(src,name){
+  if(typeof pdfjsLib==="undefined"){msg("Không tải được thư viện đọc PDF (pdf.js). Hãy kiểm tra kết nối mạng rồi tải lại trang.",true);return}
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    msg("Đang tải sách…",true);
+    const task=pdfjsLib.getDocument(src);
+    task.onProgress=p=>{if(p&&p.total)msg("Đang tải sách… "+Math.round(p.loaded/p.total*100)+"%",true)};
+    const pdf=await task.promise;
+    const p1=await pdf.getPage(1);
+    const v=p1.getViewport({scale:1});
+    resetCache();
+    S.pdf=pdf;S.N=pdf.numPages;S.ratio=v.width/v.height;S.key="pos:"+name;
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    S.rh=Math.round(Math.min(1500,Math.max(window.innerHeight,window.innerWidth/S.ratio))*dpr);
+    $("welcome").style.display="none";
+    $("stage").style.display="flex";
+    $("foot").style.display="flex";
+    document.querySelectorAll(".nav").forEach(b=>b.style.display="block");
+    const saved=Math.min(Math.max(parseInt(store(S.key))||1,1),S.N);
+    buildBook(saved);
+    const mobile=compact();
+    if(mobile){
+      msg((saved>1?"Tiếp tục từ trang "+saved+". ":"")+"Chạm mép trái/phải hoặc vuốt để lật, chạm giữa để mở menu.");
+      setTimeout(()=>document.body.classList.add("ui-hidden"),2800);
+    }else msg(saved>1?"Tiếp tục từ trang "+saved:"Sẵn sàng. Lật trang bằng ← → hoặc kéo mép trang.");
+  }catch(e){
+    console.error(e);
+    msg("Không mở được PDF ("+((e&&e.message)||e)+"). Nếu dùng link, trang chứa file có thể không cho phép truy cập (CORS) – hãy tải file về rồi chọn từ máy.",true);
+  }
+}
+
+function resetCache(){
+  S.gen++;
+  Object.values(urls).forEach(u=>URL.revokeObjectURL(u));
+  for(const k in urls)delete urls[k];
+  done.clear();chain=Promise.resolve();
+}
+
+// ---------- Dựng sách (các tờ giấy 3D) ----------
+function measure(){
+  const st=$("stage"),aw=st.clientWidth,ah=st.clientHeight;
+  const mode=aw>=700?"double":"single";
+  let H=Math.min(ah,(mode==="double"?aw/2:aw)/S.ratio);
+  H=Math.max(Math.floor(H),50);
+  return {mode,W:Math.floor(H*S.ratio),H};
+}
+function sizeBook(){
+  const bk=$("book");
+  bk.style.width=(S.mode==="double"?2*S.W:S.W)+"px";
+  bk.style.height=S.H+"px";
+}
+function pageToK(cur){
+  const k=S.mode==="double"?Math.floor(cur/2):cur-1;
+  return Math.min(Math.max(k,0),S.kmax);
+}
+function curPage(){return S.mode==="double"?Math.max(2*S.k,1):S.k+1}
+
+function makeFace(cls,n){
+  const f=document.createElement("div");
+  f.className="face "+cls+(n?"":" blank");
+  if(n)S.faces[n]=f;
+  return f;
+}
+function buildBook(cur){
+  const m=measure();S.mode=m.mode;S.W=m.W;S.H=m.H;sizeBook();
+  const sp=$("spread");sp.replaceChildren();S.leaves=[];S.faces={};
+  const N=S.N,dbl=S.mode==="double";
+  const L=dbl?Math.ceil(N/2):N;
+  for(let j=0;j<L;j++){
+    const front=dbl?2*j+1:j+1;
+    const back=dbl?(2*j+2<=N?2*j+2:null):null;
+    const el=document.createElement("div");el.className="leaf";
+    el.style.left=dbl?"50%":"0";el.style.width=dbl?"50%":"100%";
+    el.appendChild(makeFace("front",front));
+    if(dbl)el.appendChild(makeFace("back",back));
+    sp.appendChild(el);S.leaves.push({el});
+  }
+  S.kmax=dbl?(N%2===0?L:L-1):N-1;
+  S.k=pageToK(cur);
+  place();
+  afterMove();
+}
+function shiftX(){
+  if(S.mode!=="double")return 0;
+  if(S.k===0)return -S.W/2;
+  if(S.k===S.kmax&&S.N%2===0)return S.W/2;
+  return 0;
+}
+function zFor(j){return j<S.k?j+1:S.leaves.length-j}
+function place(){ // đặt lại tất cả tờ giấy ngay lập tức
+  const L=S.leaves;
+  L.forEach((l,j)=>{l.el.classList.add("drag");l.el.style.transform="rotateY("+(j<S.k?-180:0)+"deg)";l.el.style.zIndex=zFor(j)});
+  const sp=$("spread");sp.style.transition="none";sp.style.transform="translateX("+shiftX()+"px)";
+  void sp.offsetWidth;
+  L.forEach(l=>l.el.classList.remove("drag"));sp.style.transition="";
+}
+function settleZ(){S.leaves.forEach((l,j)=>{l.el.style.zIndex=zFor(j);l.el.classList.remove("moving")})}
+
+let zTop=1000;
+function flip(dir){ // dir: +1 sang trang, -1 lùi trang
+  const nk=S.k+dir;
+  if(nk<0||nk>S.kmax)return false;
+  const leaf=S.leaves[dir>0?S.k:nk];
+  leaf.el.style.zIndex=++zTop;leaf.el.classList.add("moving");
+  leaf.el.style.transform="rotateY("+(dir>0?-180:0)+"deg)";
+  S.k=nk;
+  $("spread").style.transform="translateX("+shiftX()+"px)";
+  setTimeout(settleZ,EASE_MS);
+  afterMove();
+  return true;
+}
+function jump(cur){
+  S.k=pageToK(cur);place();afterMove();
+}
+
+// ---------- Nạp trang PDF (hàng đợi, giải phóng bộ nhớ) ----------
+async function render(n,gen){
+  try{
+    const p=await S.pdf.getPage(n);
+    if(gen!==S.gen||!done.has(n))return;
+    const vp=p.getViewport({scale:S.rh/p.getViewport({scale:1}).height});
+    const c=document.createElement("canvas");c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+    const x=c.getContext("2d");
+    x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);
+    await p.render({canvasContext:x,viewport:vp}).promise;
+    // Nhuộm nền trắng thành màu giấy cũ, ố nhẹ ở mép trang
+    x.globalCompositeOperation="multiply";
+    x.fillStyle="#e6d3a3";x.fillRect(0,0,c.width,c.height);
+    const g=x.createRadialGradient(c.width/2,c.height/2,Math.min(c.width,c.height)*.35,c.width/2,c.height/2,Math.max(c.width,c.height)*.75);
+    g.addColorStop(0,"rgba(255,255,255,1)");g.addColorStop(1,"rgba(196,160,102,1)");
+    x.fillStyle=g;x.fillRect(0,0,c.width,c.height);
+    const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.86));
+    c.width=c.height=0;
+    if(gen!==S.gen||!done.has(n)||!blob)return;
+    const u=URL.createObjectURL(blob);urls[n]=u;
+    const f=S.faces[n];
+    if(f){const img=new Image();img.draggable=false;img.src=u;f.replaceChildren(img)}
+  }catch(e){done.delete(n)}
+}
+function want(cur){
+  const order=[cur,cur+1,cur-1,cur+2,cur-2,cur+3,cur+4,cur-3];
+  const gen=S.gen;
+  order.forEach(n=>{
+    if(n>=1&&n<=S.N&&!done.has(n)){done.add(n);chain=chain.then(()=>render(n,gen))}
+  });
+  for(const k of Object.keys(urls)){
+    if(Math.abs(k-cur)>10){
+      URL.revokeObjectURL(urls[k]);delete urls[k];done.delete(+k);
+      if(S.faces[k])S.faces[k].replaceChildren();
+    }
+  }
+}
+// Khi dựng lại (đổi chế độ) các khuôn mặt mới cần ảnh: nạp lại từ cache
+function reattach(){
+  for(const k in urls){const f=S.faces[k];if(f&&!f.firstChild){const img=new Image();img.draggable=false;img.src=urls[k];f.replaceChildren(img)}}
+}
+
+function afterMove(){
+  const cur=curPage(),N=S.N;
+  let label;
+  if(S.mode==="double"&&S.k>0){const r=2*S.k+1;label=(r<=N?(2*S.k)+"–"+r:""+(2*S.k))}
+  else label=String(cur);
+  $("pn").textContent=label+" / "+N;
+  const sk=$("seek");sk.max=N;sk.value=cur;
+  store(S.key,cur);
+  reattach();want(cur);
+}
+
+// ---------- Điều khiển: chạm, vuốt, bàn phím ----------
+let g=null;
+const mainEl=$("main");
+mainEl.addEventListener("pointerdown",e=>{
+  if(!S.pdf||e.button>0)return;
+  g={x:e.clientX,y:e.clientY,t:Date.now(),dir:0,leaf:null,p:0};
+  try{mainEl.setPointerCapture(e.pointerId)}catch(_){}
+});
+mainEl.addEventListener("pointermove",e=>{
+  if(!g)return;
+  const dx=e.clientX-g.x;
+  if(!g.dir){
+    if(Math.abs(dx)<10)return;
+    const d=dx<0?1:-1;
+    if((d>0&&S.k>=S.kmax)||(d<0&&S.k<=0)){g.dir=2;return}
+    g.dir=d;
+    g.leaf=S.leaves[d>0?S.k:S.k-1];
+    g.leaf.el.classList.add("drag","moving");g.leaf.el.style.zIndex=++zTop;
+  }
+  if(g.dir===2)return;
+  const p=Math.min(Math.max((g.dir>0?-dx:dx)/S.W,0),1);
+  g.p=p;
+  g.leaf.el.style.transform="rotateY("+(g.dir>0?-180*p:-180*(1-p))+"deg)";
+});
+function endPointer(e,cancel){
+  if(!g)return;
+  const s=g;g=null;
+  if(s.dir===2)return;
+  if(s.dir===0){
+    if(cancel||Date.now()-s.t>450)return;
+    if(e.target&&e.target.closest&&e.target.closest("button"))return;
+    const f=e.clientX/window.innerWidth;
+    if(f<.3)flip(-1);else if(f>.7)flip(1);
+    else if(compact())document.body.classList.toggle("ui-hidden");
+    return;
+  }
+  const el=s.leaf.el;
+  const v=Math.abs(e.clientX-s.x)/Math.max(Date.now()-s.t,1);
+  const ok=!cancel&&(s.p>.3||(v>.5&&s.p>.06));
+  el.classList.remove("drag");
+  if(ok){
+    S.k+=s.dir;
+    el.style.transform="rotateY("+(s.dir>0?-180:0)+"deg)";
+    $("spread").style.transform="translateX("+shiftX()+"px)";
+    afterMove();
+  }else{
+    el.style.transform="rotateY("+(s.dir>0?0:-180)+"deg)";
+  }
+  setTimeout(settleZ,EASE_MS);
+}
+mainEl.addEventListener("pointerup",e=>endPointer(e,false));
+mainEl.addEventListener("pointercancel",e=>endPointer(e,true));
+$("prev").onclick=()=>flip(-1);
+$("next").onclick=()=>flip(1);
+$("seek").oninput=e=>S.pdf&&jump(+e.target.value);
+document.addEventListener("keydown",e=>{
+  if(!S.pdf||e.target.tagName==="INPUT")return;
+  if(e.key==="ArrowRight"||e.key==="PageDown")flip(1);
+  else if(e.key==="ArrowLeft"||e.key==="PageUp")flip(-1);
+  else if(e.key==="Home")jump(1);
+  else if(e.key==="End")jump(S.N);
+});
+
+// Đổi kích thước / xoay màn hình
+let rt;
+function onResize(){
+  clearTimeout(rt);
+  rt=setTimeout(()=>{
+    if(!S.pdf)return;
+    const m=measure();
+    if(m.mode!==S.mode){buildBook(curPage())}
+    else{S.W=m.W;S.H=m.H;sizeBook();$("spread").style.transform="translateX("+shiftX()+"px)"}
+  },200);
+}
+window.addEventListener("resize",onResize);
+window.addEventListener("orientationchange",onResize);
+
+// ---------- Mở sách ----------
+$("go").onclick=()=>{const u=$("url").value.trim();if(u)openBook({url:u},u)};
+$("url").onkeydown=e=>{if(e.key==="Enter")$("go").click()};
+async function fromFile(f){
+  if(!f)return;
+  try{const buf=await f.arrayBuffer();openBook({data:new Uint8Array(buf)},f.name+f.size)}
+  catch(e){msg("Không đọc được file: "+e.message,true)}
+}
+$("file").onchange=e=>fromFile(e.target.files[0]);
+const drop=$("drop");
+["dragover","dragenter"].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();drop.classList.remove("over")}));
+document.addEventListener("drop",e=>fromFile(e.dataTransfer.files[0]));
+const q=new URLSearchParams(location.search).get("pdf");
+if(q){$("url").value=q;$("go").click()}
+</script>
+</body>
+</html>
